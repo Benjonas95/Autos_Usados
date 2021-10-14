@@ -1,0 +1,200 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+Autos<-read.csv("../Input1/autos_usados.csv")
+Autos<- as.data.frame(Autos)
+```
+
+
+EXPLORACION DE DATOS
+```{r}
+summary(Autos)
+```
+
+#CUANTOS MODELOS DE AUTOS HAY?
+```{r}
+library(dplyr)
+Autos1<-Autos[!duplicated(Autos$modelo),]
+glimpse(Autos1)
+#Exitisen 27 tipos de modelos de autos
+```
+
+Cuantos tipos de transmision hay de cada uno?
+```{r}
+table(Autos$transmisión)
+```
+Cuantos tipos de combustible hay?
+```{r}
+table(Autos$combustible)
+```
+
+###cuanto de que years hay?
+```{r}
+table(Autos$año)
+fa<-filter(Autos,año>="2016")
+hist(fa$año)
+```
+
+##verificacion de datos nulos
+```{r}
+colSums(is.na(Autos))
+```
+#porcentaje de TIPO DE Transmision
+```{r}
+prop.table(table(Autos$transmisión)) * 100
+
+```
+
+
+##Elimando las columas "tax" y "mpg"
+```{r}
+Autos2<-Autos
+Autos2$tax = NULL
+Autos2$mpg = NULL
+head(Autos2,5)
+```
+
+##VIZUALISACIONES DE LOS DATOS
+```{r}
+library(DT)
+datatable(head(Autos2,5),
+          class = "norwrap hover row-border",
+          options = list(dom="t",
+                         scrollx= FALSE,
+                         autowidth=TRUE))
+```
+
+#Filtros de Autos mayores a 2013 y transmision excepto Semi Auto y Hydri
+```{r}
+Autos2%>%
+  filter(Autos2$año>="2013",Autos2$transmisión!="Semi-Auto",Autos2$combustible!="Hybrid")
+```
+
+
+##Grafico de Barra segun tipo de autos
+```{r}
+library(ggplot2)
+q<-ggplot(Autos)
+q<-q+aes(x=modelo,fill=modelo)
+q<-q+geom_bar()
+q<-q+xlab("Modelo de AUTOS")
+q<-q+ylab("Cantidad")
+q<-q+ggtitle("frecuencia de modelos de autos",subtitle = "Concesionaria-2019")
+q<-q+coord_flip()
+q
+```
+
+
+#Filtros de Autos mayores a 2014,transmision solo automatico y todo los tipos de combustible distintos a Petrol, asi creando un nuevo data set.
+##Graficadndo Tremap en los tipos de transmision
+```{r}
+Autosf<-filter(Autos,combustible!="Petrol",transmisión!="Other",año>="2014")
+library(treemapify)
+library(glue)
+trans_ptc<-Autosf%>%
+  group_by(transmisión)%>%
+  count()%>%
+  ungroup()%>%
+  mutate(percentage=`n`/sum(`n`) * 100)
+lab<-trans_ptc%>%
+  glue_data('{round(percentage,1)}% \n{transmisión}')
+ggplot(trans_ptc, aes(area = percentage, fill = transmisión,
+        label = lab)) + geom_treemap() + 
+        theme(legend.position="none") +
+        geom_treemap_text(fontface = "italic", 
+             colour = "white", place = "topleft",
+             grow = TRUE) +
+        scale_fill_manual(values = c("dodgerblue3", "cadetblue4", 
+                "chocolate4", "black", "burlywood4", "gold2"))                  
+```
+
+#Representacion grafica en torta de 
+```{r}
+Autosf1<-filter(Autos,combustible!="Diesel",transmisión!="Other",año>="2014")
+comb_ptc<-Autosf1%>%
+  group_by(combustible)%>%
+  count()%>%
+  ungroup()%>%
+  mutate(percentage=`n`/sum(`n`) * 100)
+ggplot(comb_ptc, aes(x=1, y=percentage, fill=combustible)) +
+        geom_bar(stat="identity") +
+        geom_text(aes(label = paste0(round(percentage,1),"%")), 
+                  position = position_stack(vjust = 0.1)) +
+        coord_polar(theta = "y") + 
+        theme_void()+ggtitle("Grafico de pastel",subtitle = "2019")
+
+```
+```{r}
+prop.table(table(Autosf1$combustible)) * 100
+```
+#Eliminando la columna 1 hasta el 6
+```{r}
+AutosN<-Autos
+AutosN[1:6]<-NULL
+head(AutosN)
+```
+
+```{r}
+##Normalizando datos
+AutosN1<-scale(AutosN)
+head(AutosN1)
+```
+
+Cuantos clusters pueden formarse?
+metodoligia Kmeans
+
+```{r}
+k<-list()
+for (i in 1:10) {
+  k[[i]]<-kmeans(AutosN1,i)
+}
+```
+
+
+```{r}
+between<-list()
+for (i in 1:10) {
+  between[[i]]<-k[[i]]$betweenss /k[[i]]$totss
+}
+```
+
+```{r}
+plot(1:10,between,"o")
+```
+#Aparentemente solo se pueden formar de 3 a 4 cluster
+
+```{r}
+cluster1<-kmeans(AutosN1,3)
+cluster1
+```
+
+```{r}
+plot(AutosN,col=cluster1$cluster)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
